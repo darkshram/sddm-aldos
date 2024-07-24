@@ -1,16 +1,18 @@
 [SddmGreeterTheme]
-Name=ALDOS
-Description=ALDOS Theme
-Author=Joel Barrios, based on Breeze Fedora by David Edmundson
-Copyright=(c) 2014, David Edmundson, (c) 2019 Joel Barrios
+Name=ALDOS Breeze
+Name[es]=ALDOS Brisa
+Description=ALDOS Breeze
+Description[es]=ALDOS Brisa
+Author=KDE Visual Design Group
+Copyright=(c) 2014, David Edmundson
 License=CC-BY-SA
 Type=sddm-theme
-Version=0.2
-Website=http://www.alcancelibre.org
+Version=0.1
+Website=https://github.com/sddm/sddm
 Screenshot=preview.png
 MainScript=Main.qml
 ConfigFile=theme.conf
 TranslationsDirectory=translations
-Email=darkshram@gmail.com
-Theme-Id=01-aldos
+Email=plasma-devel@kde.org
+Theme-Id=breeze
 Theme-API=2.0

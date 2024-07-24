@@ -1,61 +1,75 @@
 /*
- *   Copyright 2014 David Edmundson <davidedmundson@kde.org>
- *   Copyright 2014 Aleix Pol Gonzalez <aleixpol@blue-systems.com>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU Library General Public License as
- *   published by the Free Software Foundation; either version 2 or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details
- *
- *   You should have received a copy of the GNU Library General Public
- *   License along with this program; if not, write to the
- *   Free Software Foundation, Inc.,
- *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
+    SPDX-FileCopyrightText: 2014 David Edmundson <davidedmundson@kde.org>
+    SPDX-FileCopyrightText: 2014 Aleix Pol Gonzalez <aleixpol@blue-systems.com>
 
-import QtQuick 2.4
+    SPDX-License-Identifier: LGPL-2.0-or-later
+*/
 
+import QtQuick 2.8
+import QtQuick.Window 2.15
 import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 2.0 as PlasmaComponents
+import org.kde.plasma.components 3.0 as PlasmaComponents3
 
 Item {
     id: wrapper
 
+    // If we're using software rendering, draw outlines instead of shadows
+    // See https://bugs.kde.org/show_bug.cgi?id=398317
+    readonly property bool softwareRendering: GraphicsInfo.api === GraphicsInfo.Software
+
     property bool isCurrent: true
 
-    readonly property var m: model
     property string name
     property string userName
     property string avatarPath
     property string iconSource
+    property bool needsPassword
+    property var vtNumber
     property bool constrainText: true
+    property alias nameFontSize: usernameDelegate.font.pointSize
+    property int fontSize: PlasmaCore.Theme.defaultFont.pointSize + 2
     signal clicked()
 
-    property real faceSize: Math.min(width, height - usernameDelegate.height - units.largeSpacing)
+    property real faceSize: PlasmaCore.Units.gridUnit * 7
 
     opacity: isCurrent ? 1.0 : 0.5
 
     Behavior on opacity {
         OpacityAnimator {
-            duration: units.longDuration
+            duration: PlasmaCore.Units.longDuration
         }
+    }
+
+    // Draw a translucent background circle under the user picture
+    Rectangle {
+        anchors.centerIn: imageSource
+        width: imageSource.width - 2 // Subtract to prevent fringing
+        height: width
+        radius: width / 2
+
+        color: PlasmaCore.ColorScope.backgroundColor
+        opacity: 0.6
     }
 
     Item {
         id: imageSource
-        width: faceSize
-        height: faceSize
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        Behavior on width {
+            PropertyAnimation {
+                from: faceSize
+                duration: PlasmaCore.Units.longDuration;
+            }
+        }
+        width: isCurrent ? faceSize : faceSize - PlasmaCore.Units.largeSpacing
+        height: width
 
         //Image takes priority, taking a full path to a file, if that doesn't exist we show an icon
         Image {
             id: face
             source: wrapper.avatarPath
-            sourceSize: Qt.size(faceSize, faceSize)
+            sourceSize: Qt.size(faceSize * Screen.devicePixelRatio, faceSize * Screen.devicePixelRatio)
             fillMode: Image.PreserveAspectCrop
             anchors.fill: parent
         }
@@ -65,7 +79,7 @@ Item {
             source: iconSource
             visible: (face.status == Image.Error || face.status == Image.Null)
             anchors.fill: parent
-            anchors.margins: units.gridUnit * 0.5 // because mockup says so...
+            anchors.margins: PlasmaCore.Units.gridUnit * 0.5 // because mockup says so...
             colorGroup: PlasmaCore.ColorScope.colorGroup
         }
     }
@@ -81,13 +95,14 @@ Item {
 
         property var source: ShaderEffectSource {
             sourceItem: imageSource
-            hideSource: true
-            live: false
+            // software rendering is just a fallback so we can accept not having a rounded avatar here
+            hideSource: wrapper.GraphicsInfo.api !== GraphicsInfo.Software
+            live: true // otherwise the user in focus will show a blurred avatar
         }
 
         property var colorBorder: PlasmaCore.ColorScope.textColor
 
-        //draw a circle with an antialised border
+        //draw a circle with an antialiased border
         //innerRadius = size of the inner circle with contents
         //outerRadius = size of the border
         //blend = area to blend between two colours
@@ -128,17 +143,21 @@ Item {
         "
     }
 
-
-
-    PlasmaComponents.Label {
+    PlasmaComponents3.Label {
         id: usernameDelegate
-        anchors {
-            bottom: parent.bottom
-            horizontalCenter: parent.horizontalCenter
-        }
-        height: implicitHeight // work around stupid bug in Plasma Components that sets the height
+
+        anchors.top: imageSource.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        // Make it bigger than other fonts to match the scale of the avatar better
+        font.pointSize: wrapper.fontSize + 4
+
         width: constrainText ? parent.width : implicitWidth
         text: wrapper.name
+        style: softwareRendering ? Text.Outline : Text.Normal
+        styleColor: softwareRendering ? PlasmaCore.ColorScope.backgroundColor : "transparent" //no outline, doesn't matter
+        wrapMode: Text.WordWrap
+        maximumLineCount: wrapper.constrainText ? 3 : 1
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         //make an indication that this has active focus, this only happens when reached with keyboard navigation
